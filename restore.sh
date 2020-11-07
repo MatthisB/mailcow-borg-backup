@@ -7,20 +7,22 @@
 ###############################
 # Author:       Matthis B.    #
 # Created:      20201106      #
-# Lastchange:   20201106      #
+# Lastchange:   20201107      #
 ###############################
 # Changelog:                  #
 # - 20201106: init            #
+# - 20201107: small changes   #
 ###############################
 
 #
 # Settings
 #
 
-dockerDir="/opt/mailcow-dockerized"
+dockerDir="/opt/mailcow-dockerized"						# path to docker-compose.yml
 
-restoreVolumesFrom="/path/to/extracted/borgbackup"
-restoreVolumesTo="/var/lib/docker/volumes"
+restoreVolumesFrom="/path/to/extracted/borgbackup"		# path to EXTRACTED backup directory
+restoreVolumesTo="/var/lib/docker/volumes"				# path to volumes directory
+
 
 dirnameVMail="mailcowdockerized_vmail-vol-1"
 dirnameCrypt="mailcowdockerized_crypt-vol-1"
@@ -34,6 +36,10 @@ dirnameMySQL="mailcowdockerized_mysql-vol-1"
 #
 # Pre-Restore
 #
+if [[ "$(id -u)" != "0" ]] ; then
+  echo "- ERROR: no root!"
+  exit 1
+fi
 if [[ ! -d "${dockerDir}" ]] ; then
   echo "- ERROR: docker directory does not exist (${dockerDir})!"
   exit 1
@@ -43,10 +49,19 @@ if [[ ! -d "${restoreVolumesFrom}" ]] ; then
   exit 1
 fi
 if [[ ! -d "${restoreVolumesTo}" ]] ; then
-  echo "- ERROR: before running this script you have to install and start+stop mailcow once!"
+  echo "- ERROR: volumes directory does not exist (${restoreVolumesTo})!"
+  echo "- HINT: before running this script you have to install and start+stop mailcow once!"
   exit 1
 fi
-
+volumeDirs=("$dirnameVMail" "$dirnameCrypt" "$dirnameRedis" "$dirnameRSpamd" "$dirnamePostfix" "$dirnameMySQL")
+for dir in "${volumeDirs[@]}" ; do
+  dir="${restoreVolumesTo}/${dir}"
+  if [[ ! -d "$dir" ]] ; then
+    echo "- ERROR: volume directory does not exist (${dir})!"
+    echo "- HINT: before running this script you have to install and start+stop mailcow once!"
+    exit 1
+  fi
+done
 
 
 #
@@ -56,37 +71,44 @@ echo "- start restoring data"
 
 echo
 echo "-- vmail"
-rm -rf "${restoreVolumesTo}/${dirnameVMail}/"/*
-rsync -avx "${restoreVolumesFrom}/${restoreVolumesTo}/${dirnameVMail}/" "${restoreVolumesTo}/${dirnameVMail}/"
+echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameVMail}/ -> ${restoreVolumesTo}/${dirnameVMail}/"
+rm -rf "${restoreVolumesTo}/${dirnameVMail}/"*
+rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameVMail}/" "${restoreVolumesTo}/${dirnameVMail}/"
 
 echo
 echo "-- crypt"
-rm -rf "${restoreVolumesTo}/${dirnameCrypt}/"/*
-rsync -avx "${restoreVolumesFrom}/${restoreVolumesTo}/${dirnameCrypt}/" "${restoreVolumesTo}/${dirnameCrypt}/"
+echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameCrypt}/ -> ${restoreVolumesTo}/${dirnameCrypt}/"
+rm -rf "${restoreVolumesTo}/${dirnameCrypt}/"*
+rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameCrypt}/" "${restoreVolumesTo}/${dirnameCrypt}/"
 
 echo
 echo "-- redis"
-rm -rf "${restoreVolumesTo}/${dirnameRedis}/"/*
-rsync -avx "${restoreVolumesFrom}/${restoreVolumesTo}/${dirnameRedis}/" "${restoreVolumesTo}/${dirnameRedis}/"
+echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameRedis}/ -> ${restoreVolumesTo}/${dirnameRedis}/"
+rm -rf "${restoreVolumesTo}/${dirnameRedis}/"*
+rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameRedis}/" "${restoreVolumesTo}/${dirnameRedis}/"
 
 echo
 echo "-- rspamd"
-rm -rf "${restoreVolumesTo}/${dirnameRSpamd}/"/*
-rsync -avx "${restoreVolumesFrom}/${restoreVolumesTo}/${dirnameRSpamd}/" "${restoreVolumesTo}/${dirnameRSpamd}/"
+echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameRSpamd}/ -> ${restoreVolumesTo}/${dirnameRSpamd}/"
+rm -rf "${restoreVolumesTo}/${dirnameRSpamd}/"*
+rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameRSpamd}/" "${restoreVolumesTo}/${dirnameRSpamd}/"
 
 echo
 echo "-- postfix"
-rm -rf "${restoreVolumesTo}/${dirnamePostfix}/"/*
-rsync -avx "${restoreVolumesFrom}/${restoreVolumesTo}/${dirnamePostfix}/" "${restoreVolumesTo}/${dirnamePostfix}/"
+echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnamePostfix}/ -> ${restoreVolumesTo}/${dirnamePostfix}/"
+rm -rf "${restoreVolumesTo}/${dirnamePostfix}/"*
+rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnamePostfix}/" "${restoreVolumesTo}/${dirnamePostfix}/"
 
 echo
 echo "-- mysql"
-rm -rf "${restoreVolumesTo}/${dirnameMySQL}/"/*
-rsync -avx "${restoreVolumesFrom}/${restoreVolumesTo}/${dirnameMySQL}/_data/tmp_backup/" "${restoreVolumesTo}/${dirnameMySQL}/_data/"
+echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameMySQL}/_data/tmp_backup/ -> ${restoreVolumesTo}/${dirnameMySQL}/_data/"
+rm -rf "${restoreVolumesTo}/${dirnameMySQL}/"*
+rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameMySQL}/_data/tmp_backup/" "${restoreVolumesTo}/${dirnameMySQL}/_data/"
 
 echo
 echo "-- mailcow"
-rsync -avx "${restoreVolumesFrom}${dockerDir}/" "${dockerDir}/"
+echo "--- ${restoreVolumesFrom}/${dockerDir}/ -> ${dockerDir}/"
+rsync -axh --stats "${restoreVolumesFrom}${dockerDir}/" "${dockerDir}/"
 
 
 
@@ -96,5 +118,5 @@ rsync -avx "${restoreVolumesFrom}${dockerDir}/" "${dockerDir}/"
 
 echo
 echo "- Done!"
-echo "- You should be able to start your mailcow as usual."
+echo "- You should be able to start your mailcow as usual (docker-compose up -d)."
 echo "- Have fun :)"

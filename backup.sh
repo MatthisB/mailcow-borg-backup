@@ -7,10 +7,11 @@
 ###############################
 # Author:       Matthis B.    #
 # Created:      20201105      #
-# Lastchange:   20201105      #
+# Lastchange:   20201107      #
 ###############################
 # Changelog:                  #
 # - 20201105: init            #
+# - 20201107: small changes   #
 ###############################
 
 ##
@@ -31,10 +32,10 @@ trap "echo $( getDate ) Backup interrupted >&2; exit 2" INT TERM
 #
 
 # System vars
-workDirectory='/opt/mailcow-dockerized'
+workDirectory='/opt/mailcow-dockerized'		# path to docker-compose.yml
 
-logDirectory='/home/path/to/backup/log'
-logKeepAmount='10'
+logDirectory='/home/path/to/backup/log'		# path top log archive (keep in mind to change path in cron also)
+logKeepAmount='10'							# how many logfiles should be kept
 
 
 # Borg env vars
@@ -162,8 +163,9 @@ fi
 
 # backup database: redis
 echo "--- redis-dump"
-redisdump=$(docker exec $(docker ps -qf name=redis-mailcow) redis-cli save)
-if [[ "$redisdump" == "OK" ]]; then
+redis_id=$(docker ps -qf name=redis-mailcow)
+redis_dump=$(docker exec $redis_id redis-cli save)
+if [[ "$redis_dump" == "OK" ]]; then
   echo "---- success"
 else
   echo "---- FAILED: $redisdump"
@@ -181,6 +183,8 @@ echo
 echo "-- start syncing files"
 echo
 
+thisFile="$(pwd)/$(basename ${0})"
+
 borg create															\
   --show-rc															\
   --verbose															\
@@ -197,7 +201,7 @@ borg create															\
   "${volumeRSpamd}"													\
   "${volumePostfix}"												\
   "${volumeMySQL}/tmp_backup"										\
-  "${workDirectory}/data/conf/nginx/redirect.conf"						# additional
+  "${thisFile}"
 
 borg_create_exit=$?
 
@@ -270,4 +274,3 @@ fi
 info "-> everything done: exit"
 
 exit ${borg_create_exit}
-
