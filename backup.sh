@@ -7,11 +7,12 @@
 ###############################
 # Author:       Matthis B.    #
 # Created:      20201105      #
-# Lastchange:   20201107      #
+# Lastchange:   20201119      #
 ###############################
 # Changelog:                  #
 # - 20201105: init            #
 # - 20201107: small changes   #
+# - 20201119: bug fixes       #
 ###############################
 
 ##
@@ -101,9 +102,9 @@ info "start backup"
 echo "-- clean up temp/log"
 countLogs=$(ls -l ${logDirectory}/*.log 2>/dev/null | wc -l)
 echo "--- found $countLogs old log files"
-if (( "$countLogs" >= "$logKeepAmount" )) ; then
+if (( "$countLogs" > "$logKeepAmount" )) ; then
   echo "--- delete old logfiles up to the last $logKeepAmount .."
-  ls -dt "${logDirectory}"/*".log" | tail -n "+$((logKeepAmount+1))" | xargs rm -v
+  ls -dt ${logDirectory}/*.log | tail -n "+$((logKeepAmount+1))" | xargs rm -v
 fi
 
 echo
@@ -117,7 +118,6 @@ if [[ "$(docker inspect -f '{{ .State.ExitCode }}' "$dovecot_id")" == "0" && "$(
   echo "----- success"
 else
   echo "----- FAILED"
-  exit 1
 fi
 echo "---- stop postfix"
 postfix_id=$(docker stop "$(docker ps -qf name=postfix-mailcow)")
@@ -125,7 +125,6 @@ if [[ "$(docker inspect -f '{{ .State.ExitCode }}' "$postfix_id")" == "0" && "$(
   echo "----- success"
 else
   echo "----- FAILED"
-  exit 1
 fi
 
 # show error on webstuff
@@ -136,7 +135,6 @@ if [[ "$(docker inspect -f '{{ .State.Running }}' "$nginx_id")" == "true" ]] ; t
   echo "---- success"
 else
   echo "---- FAILED"
-  exit 1
 fi
 
 # backup database: mysql
@@ -146,7 +144,6 @@ if [[ -d "${volumeMySQL}/tmp_backup" ]] ; then
   rm -r "${volumeMySQL}/tmp_backup"
   if [[ -d "${volumeMySQL}/tmp_backup" ]] ; then
     echo "---- FAILED: could not delete"
-    exit 1
   fi
 fi
 mysql_id=$(docker ps -qf 'name=mysql-mailcow')
@@ -158,7 +155,6 @@ if [[ -d "${volumeMySQL}/tmp_backup" ]] ; then
   echo "---- success"
 else
   echo "---- FAILED: could not create backup"
-  exit 1
 fi
 
 # backup database: redis
@@ -169,7 +165,6 @@ if [[ "$redis_dump" == "OK" ]]; then
   echo "---- success"
 else
   echo "---- FAILED: $redisdump"
-  exit 1
 fi
 
 
@@ -183,7 +178,8 @@ echo
 echo "-- start syncing files"
 echo
 
-thisFile="$(pwd)/$(basename ${0})"
+thisDir="$( cd $( dirname ${BASH_SOURCE[0]} ) >/dev/null 2>&1 && pwd )"
+thisFile="$(basename ${0})"
 
 borg create															\
   --show-rc															\
@@ -201,25 +197,20 @@ borg create															\
   "${volumeRSpamd}"													\
   "${volumePostfix}"												\
   "${volumeMySQL}/tmp_backup"										\
-  "${thisFile}"
+  "${thisDir}/${thisFile}"
 
 borg_create_exit=$?
 
-echo
-
 # check state
 echo
+echo "-- borg finished"
 if [[ "${borg_create_exit}" == "0" ]] ; then
-  info "borg finished successfully"
+  echo "--- success"
 elif [[ "${borg_create_exit}" == "1" ]] ; then
-  info "borg finished with warnings"
+  echo "--- WARN: 1"
 else
-  info "borg finished with errors"
+  echo "--- FAILED: ${borg_create_exit}"
 fi
-# calc backup duration
-endTime=$(date +%s)
-duration=$((endTime-startTime))
-echo "-- backup duration: $(printf '%02d hours %02d minutes %02d seconds' $((duration / 3600)) $(((duration / 60) % 60)) $((duration % 60)))"
 
 
 
@@ -237,7 +228,6 @@ if [[ "$(docker inspect -f '{{ .State.Running }}' "$dovecot_id")" == "true" ]] ;
   echo "----- success"
 else
   echo "----- FAILED"
-  exit 1
 fi
 echo "---- start postfix"
 postfix_id=$(docker start "$(docker ps -aqf name=postfix-mailcow)")
@@ -245,7 +235,6 @@ if [[ "$(docker inspect -f '{{ .State.Running }}' "$postfix_id")" == "true" ]] ;
   echo "----- success"
 else
   echo "----- FAILED"
-  exit 1
 fi
 
 # show error on webstuff
@@ -258,7 +247,6 @@ if [[ "$(docker inspect -f '{{ .State.Running }}' "$nginx_id")" == "true" ]] ; t
   echo "---- success"
 else
   echo "---- FAILED"
-  exit 1
 fi
 
 # clean tmp stuff
@@ -270,7 +258,11 @@ if [[ -d "${volumeMySQL}/tmp_backup" ]] ; then
 fi
 
 
-
+# calc backup duration
+endTime=$(date +%s)
+duration=$((endTime-startTime))
+echo
+echo "-- backup duration: $(printf '%02d hours %02d minutes %02d seconds' $((duration / 3600)) $(((duration / 60) % 60)) $((duration % 60)))"
 info "-> everything done: exit"
 
 exit ${borg_create_exit}
