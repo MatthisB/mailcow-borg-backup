@@ -1,18 +1,19 @@
 #!/bin/bash
 
-###############################
-#                             #
-#     Mailcow Borg Restore    #
-#                             #
-###############################
-# Author:       Matthis B.    #
-# Created:      20201106      #
-# Lastchange:   20201107      #
-###############################
-# Changelog:                  #
-# - 20201106: init            #
-# - 20201107: small changes   #
-###############################
+########################################
+#                                      #
+#         Mailcow Borg Restore         #
+#                                      #
+########################################
+# Author:       Matthis B.             #
+# Created:      20201106               #
+# Lastchange:   20201129               #
+########################################
+# Changelog:                           #
+# - 20201106: init                     #
+# - 20201107: small changes            #
+# - 20201129: fix shellcheck warnings  #
+########################################
 
 #
 # Settings
@@ -72,37 +73,37 @@ echo "- start restoring data"
 echo
 echo "-- vmail"
 echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameVMail}/ -> ${restoreVolumesTo}/${dirnameVMail}/"
-rm -rf "${restoreVolumesTo}/${dirnameVMail}/"*
+rm -rf "${restoreVolumesTo:?}/${dirnameVMail}/"*
 rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameVMail}/" "${restoreVolumesTo}/${dirnameVMail}/"
 
 echo
 echo "-- crypt"
 echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameCrypt}/ -> ${restoreVolumesTo}/${dirnameCrypt}/"
-rm -rf "${restoreVolumesTo}/${dirnameCrypt}/"*
+rm -rf "${restoreVolumesTo:?}/${dirnameCrypt}/"*
 rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameCrypt}/" "${restoreVolumesTo}/${dirnameCrypt}/"
 
 echo
 echo "-- redis"
 echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameRedis}/ -> ${restoreVolumesTo}/${dirnameRedis}/"
-rm -rf "${restoreVolumesTo}/${dirnameRedis}/"*
+rm -rf "${restoreVolumesTo:?}/${dirnameRedis}/"*
 rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameRedis}/" "${restoreVolumesTo}/${dirnameRedis}/"
 
 echo
 echo "-- rspamd"
 echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameRSpamd}/ -> ${restoreVolumesTo}/${dirnameRSpamd}/"
-rm -rf "${restoreVolumesTo}/${dirnameRSpamd}/"*
+rm -rf "${restoreVolumesTo:?}/${dirnameRSpamd}/"*
 rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameRSpamd}/" "${restoreVolumesTo}/${dirnameRSpamd}/"
 
 echo
 echo "-- postfix"
 echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnamePostfix}/ -> ${restoreVolumesTo}/${dirnamePostfix}/"
-rm -rf "${restoreVolumesTo}/${dirnamePostfix}/"*
+rm -rf "${restoreVolumesTo:?}/${dirnamePostfix}/"*
 rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnamePostfix}/" "${restoreVolumesTo}/${dirnamePostfix}/"
 
 echo
 echo "-- mysql"
 echo "--- ${restoreVolumesFrom}${restoreVolumesTo}/${dirnameMySQL}/_data/tmp_backup/ -> ${restoreVolumesTo}/${dirnameMySQL}/_data/"
-rm -rf "${restoreVolumesTo}/${dirnameMySQL}/"*
+rm -rf "${restoreVolumesTo:?}/${dirnameMySQL}/"*
 rsync -axh --stats "${restoreVolumesFrom}${restoreVolumesTo}/${dirnameMySQL}/_data/tmp_backup/" "${restoreVolumesTo}/${dirnameMySQL}/_data/"
 
 echo

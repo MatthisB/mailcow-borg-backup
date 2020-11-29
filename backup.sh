@@ -1,19 +1,21 @@
 #!/bin/bash
 
-###############################
-#                             #
-#     Mailcow Borg Backup     #
-#                             #
-###############################
-# Author:       Matthis B.    #
-# Created:      20201105      #
-# Lastchange:   20201119      #
-###############################
-# Changelog:                  #
-# - 20201105: init            #
-# - 20201107: small changes   #
-# - 20201119: bug fixes       #
-###############################
+########################################
+#                                      #
+#         Mailcow Borg Restore         #
+#                                      #
+########################################
+# Author:       Matthis B.             #
+# Created:      20201105               #
+# Lastchange:   20201129               #
+########################################
+# Changelog:                           #
+# - 20201106: init                     #
+# - 20201107: small changes            #
+# - 20201119: bug fixes                #
+# - 20201129: fix shellcheck warnings  #
+########################################
+
 
 ##
 ## Cronjob:
@@ -23,9 +25,9 @@
 #
 # Functions
 #
-getDate() { echo $(date +'%d.%m.%Y %H:%M:%S'); }
+getDate() { date +'%d.%m.%Y %H:%M:%S'; }
 info() { printf "\n- %s %s\n\n" "$( getDate )" "$*" >&2; }
-trap "echo $( getDate ) Backup interrupted >&2; exit 2" INT TERM
+trap 'echo "$( getDate )" Backup interrupted >&2; exit 2' INT TERM
 
 
 #
@@ -51,14 +53,14 @@ export BORG_RELOCATED_REPO_ACCESS_IS_OK=yes
 
 # autocatch vars
 source "${workDirectory}/mailcow.conf"
-CMPS_PRJ=$(echo $COMPOSE_PROJECT_NAME | tr -cd "[A-Za-z-_]")
+CMPS_PRJ=$(echo "$COMPOSE_PROJECT_NAME" | tr -cd "A-Za-z-_")
 
-volumeVMail=$(docker volume inspect -f '{{ .Mountpoint }}' ${CMPS_PRJ}_vmail-vol-1)
-volumeCrypt=$(docker volume inspect -f '{{ .Mountpoint }}' ${CMPS_PRJ}_crypt-vol-1)
-volumeRedis=$(docker volume inspect -f '{{ .Mountpoint }}' ${CMPS_PRJ}_redis-vol-1)
-volumeRSpamd=$(docker volume inspect -f '{{ .Mountpoint }}' ${CMPS_PRJ}_rspamd-vol-1)
-volumePostfix=$(docker volume inspect -f '{{ .Mountpoint }}' ${CMPS_PRJ}_postfix-vol-1)
-volumeMySQL=$(docker volume inspect -f '{{ .Mountpoint }}' ${CMPS_PRJ}_mysql-vol-1)
+volumeVMail=$(docker volume inspect -f '{{ .Mountpoint }}' "${CMPS_PRJ}"_vmail-vol-1)
+volumeCrypt=$(docker volume inspect -f '{{ .Mountpoint }}' "${CMPS_PRJ}"_crypt-vol-1)
+volumeRedis=$(docker volume inspect -f '{{ .Mountpoint }}' "${CMPS_PRJ}"_redis-vol-1)
+volumeRSpamd=$(docker volume inspect -f '{{ .Mountpoint }}' "${CMPS_PRJ}"_rspamd-vol-1)
+volumePostfix=$(docker volume inspect -f '{{ .Mountpoint }}' "${CMPS_PRJ}"_postfix-vol-1)
+volumeMySQL=$(docker volume inspect -f '{{ .Mountpoint }}' "${CMPS_PRJ}"_mysql-vol-1)
 
 
 
@@ -147,7 +149,7 @@ if [[ -d "${volumeMySQL}/tmp_backup" ]] ; then
   fi
 fi
 mysql_id=$(docker ps -qf 'name=mysql-mailcow')
-docker exec ${mysql_id} /bin/sh -c "mariabackup --host mysql --user root --password ${DBROOT} \
+docker exec "${mysql_id}" /bin/sh -c "mariabackup --host mysql --user root --password ${DBROOT} \
                                         --backup --rsync --target-dir=/var/lib/mysql/tmp_backup ; \
 									mariabackup --prepare --target-dir=/var/lib/mysql/tmp_backup ; \
 									chown -R 999:999 /var/lib/mysql/tmp_backup ;" > /dev/null 2>&1
@@ -160,11 +162,11 @@ fi
 # backup database: redis
 echo "--- redis-dump"
 redis_id=$(docker ps -qf name=redis-mailcow)
-redis_dump=$(docker exec $redis_id redis-cli save)
+redis_dump=$(docker exec "$redis_id" redis-cli save)
 if [[ "$redis_dump" == "OK" ]]; then
   echo "---- success"
 else
-  echo "---- FAILED: $redisdump"
+  echo "---- FAILED: $redis_dump"
 fi
 
 
@@ -178,8 +180,8 @@ echo
 echo "-- start syncing files"
 echo
 
-thisDir="$( cd $( dirname ${BASH_SOURCE[0]} ) >/dev/null 2>&1 && pwd )"
-thisFile="$(basename ${0})"
+thisDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+thisFile="$(basename "${0}")"
 
 borg create															\
   --show-rc															\
